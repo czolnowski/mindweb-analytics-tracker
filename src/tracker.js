@@ -71,7 +71,7 @@ module.exports.run = function (domain, port)
                     if (typeof module.module[methodName] === 'function') {
                         logger.log('Register for %s callback %s.', module.name, key);
 
-                        module.module[methodName](deferreds[key]);
+                        module.module[methodName](deferreds[key].promise);
                     }
                 }
             );
