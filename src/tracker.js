@@ -119,7 +119,7 @@ module.exports.run = function (domain, port)
             logger.success('Action end. [%d]', endTime);
             logger.success('Request handled in %d ms seconds.', endTime - startTime);
         }
-    ).listen(port | 8080, domain | 'localhost');
+    ).listen(port, domain);
 
-    logger.success('Server is running!');
+    logger.success('Server is running on domain %s and port %d.', domain, port);
 };
