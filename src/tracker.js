@@ -51,8 +51,8 @@ module.exports.run = function (domain, port)
         },
         deferredsKeys = Object.keys(deferreds);
 
-    port = port | 8080;
-    domain = domain | 'localhost';
+    port = port || 8080;
+    domain = domain || 'localhost';
 
     logger.success('Start register deferreds. Modules number: %d.', modules.length);
 
