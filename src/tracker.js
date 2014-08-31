@@ -93,7 +93,7 @@ module.exports.run = function (domain, port)
             deferreds.recognizeVisitor.resolve(visitor, dataStore, request, response);
             logger.success('Recognize visitor.');
 
-            deferreds.isKnownVisitor(
+            deferreds.isKnownVisitor.resolve(
                 isKnownVisitor,
                 visitor,
                 dataStore,
@@ -123,5 +123,5 @@ module.exports.run = function (domain, port)
 
     logger.success('Server is running!');
 
-    return deferreds.connection.promise;
+    return deferreds;
 };
