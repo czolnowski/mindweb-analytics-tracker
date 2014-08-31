@@ -90,7 +90,7 @@ module.exports.run = function (domain, port)
             logger.success('New connection. [%d]', startTime);
             deferreds.connection.resolve(request, response);
 
-            deferreds.recognizeVisitor(visitor, dataStore, request, response);
+            deferreds.recognizeVisitor.resolve(visitor, dataStore, request, response);
             logger.success('Recognize visitor.');
 
             deferreds.isKnownVisitor(
@@ -102,22 +102,21 @@ module.exports.run = function (domain, port)
             );
 
             if (!isKnownVisitor) {
-                deferreds.newVisit(visitor, request, response);
+                deferreds.newVisit.resolve(visitor, request, response);
 
                 logger.success('New visit.');
             } else {
-                deferreds.knownVisit(visitor, request, response);
+                deferreds.knownVisit.resolve(visitor, request, response);
 
                 logger.success('Visit known.');
             }
 
-            deferreds.registerAction(visitor, request, response);
+            deferreds.registerAction.resolve(visitor, request, response);
             logger.success('Register action.');
 
             endTime = new Date().getTime();
 
             logger.success('Action end. [%d]', endTime);
-
             logger.success('Request handled in %d ms seconds.', endTime - startTime);
         }
     ).listen(port | 8080, domain | 'localhost');
