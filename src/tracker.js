@@ -1,7 +1,8 @@
 var logger = require('mindweb-logger'),
     http = require('http'),
     modules = [],
-    promise = require('q');
+    promise = require('q'),
+    dataStore;
 
 module.exports.init = function ()
 {
@@ -32,11 +33,17 @@ module.exports.register = function (name, module)
     logger.success('Module %s registered', name);
 };
 
+module.exports.setDataStore = function (_dataStore)
+{
+    dataStore = _dataStore;
+};
+
 module.exports.run = function (domain, port)
 {
     var deferreds = {
             connection: promise.defer(),
             recognizeVisitor: promise.defer(),
+            isKnownVisitor: promise.defer(),
             newVisit: promise.defer(),
             knownVisit: promise.defer(),
             registerAction: promise.defer(),
@@ -77,20 +84,30 @@ module.exports.run = function (domain, port)
         function (request, response)
         {
             var startTime = new Date().getTime(),
-                endTime;
+                endTime,
+                visitor = null,
+                isKnownVisitor = false;
             logger.success('New connection. [%d]', startTime);
             deferreds.connection.resolve(request, response);
 
-            var visitor = null;
-
-            deferreds.recognizeVisitor(visitor, request, response);
+            deferreds.recognizeVisitor(visitor, dataStore, request, response);
             logger.success('Recognize visitor.');
 
-            if (visitor === null) {
+            deferreds.isKnownVisitor(
+                isKnownVisitor,
+                visitor,
+                dataStore,
+                request,
+                response
+            );
+
+            if (!isKnownVisitor) {
                 deferreds.newVisit(visitor, request, response);
+
                 logger.success('New visit.');
             } else {
                 deferreds.knownVisit(visitor, request, response);
+
                 logger.success('Visit known.');
             }
 
