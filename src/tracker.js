@@ -122,6 +122,4 @@ module.exports.run = function (domain, port)
     ).listen(port | 8080, domain | 'localhost');
 
     logger.success('Server is running!');
-
-    return deferreds;
 };
