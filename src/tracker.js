@@ -132,7 +132,7 @@ module.exports.run = function (domain, port)
                 }
             );
 
-            if (!visitor.isKnown()) {
+            if (!visitor.isKnown) {
                 deferrals.newVisit.resolve(
                     {
                         visit: visit,
