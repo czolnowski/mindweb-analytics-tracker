@@ -103,91 +103,101 @@ module.exports.run = function (domain, port)
     http.createServer(
         function (request, response)
         {
-            var startTime = new Date(),
-                endTime,
-                persistStartTime,
-                persistEndTime,
+            try {
+                var startTime = new Date(),
+                    endTime,
+                    persistStartTime,
+                    persistEndTime,
 
-                visitor = new Visitor(),
-                visit = new Visit(visitor),
-                action = new Action(visit);
+                    visitor = new Visitor(),
+                    visit = new Visit(visitor),
+                    action = new Action(visit);
 
-            logger.success('New connection. [%s]', startTime, 'debug');
-            deferrals.connection.resolve(
-                {
-                    request: request,
-                    response: response
-                }
-            );
-
-            logger.info('Recognize visitor.', 'debug');
-            deferrals.recognizeVisitor.resolve(
-                {
-                    visitor: visitor,
-                    request: request,
-                    response: response
-                }
-            );
-
-            deferrals.isKnownVisitor.resolve(
-                {
-                    visitor: visitor,
-                    request: request,
-                    response: response
-                }
-            );
-
-            if (!visitor.isKnown) {
-                deferrals.newVisit.resolve(
+                logger.success('New connection. [%s]', startTime, 'debug');
+                deferrals.connection.resolve(
                     {
-                        visit: visit,
+                        request: request,
+                        response: response
+                    }
+                );
+
+                logger.info('Recognize visitor.', 'debug');
+                deferrals.recognizeVisitor.resolve(
+                    {
                         visitor: visitor,
                         request: request,
                         response: response
                     }
                 );
 
-                logger.info('New visit. [%s]', visit.getId(), 'debug');
-            } else {
-                deferrals.knownVisit.resolve(
+                deferrals.isKnownVisitor.resolve(
                     {
-                        visit: visit,
                         visitor: visitor,
                         request: request,
                         response: response
                     }
                 );
 
-                logger.info('Visit known. [%s]', visit.getId(), 'debug');
+                if (!visitor.isKnown) {
+                    deferrals.newVisit.resolve(
+                        {
+                            visit: visit,
+                            visitor: visitor,
+                            request: request,
+                            response: response
+                        }
+                    );
+
+                    logger.info('New visit. [%s]', visit.getId(), 'debug');
+                } else {
+                    deferrals.knownVisit.resolve(
+                        {
+                            visit: visit,
+                            visitor: visitor,
+                            request: request,
+                            response: response
+                        }
+                    );
+
+                    logger.info('Visit known. [%s]', visit.getId(), 'debug');
+                }
+
+                deferrals.registerAction.resolve(
+                    {
+                        action: action,
+                        request: request,
+                        response: response
+                    }
+                );
+                logger.info('Action registered. [%s]', action.getId(), 'debug');
+
+                endTime = new Date();
+
+                logger.success('Request handled in %d ms.', endTime.getTime() - startTime.getTime(), 'debug');
+
+                logger.info('Persist to data store.', 'debug');
+
+                persistStartTime = new Date();
+                dataStore.persist(visit, action);
+                persistEndTime = new Date();
+
+                logger.success('Persisted in %d ms.', persistEndTime.getTime() - persistStartTime.getTime(), 'debug');
+
+                deferrals.end.resolve(
+                    {
+                        request: request,
+                        response: response
+                    }
+                );
+            } catch (err) {
+                deferrals.end.reject(
+                    {
+                        err: err,
+                        request: request,
+                        response: response
+                    }
+                );
             }
-
-            deferrals.registerAction.resolve(
-                {
-                    action: action,
-                    request: request,
-                    response: response
-                }
-            );
-            logger.info('Action registered. [%s]', action.getId(), 'debug');
-
-            endTime = new Date();
-
-            logger.success('Request handled in %d ms.', endTime.getTime() - startTime.getTime(), 'debug');
-
-            logger.info('Persist to data store.', 'debug');
-
-            persistStartTime = new Date();
-            dataStore.persist(visit, action);
-            persistEndTime = new Date();
-
-            logger.success('Persisted in %d ms.', persistEndTime.getTime() - persistStartTime.getTime(), 'debug');
-
-            deferrals.end.resolve(
-                {
-                    request: request,
-                    response: response
-                }
-            );
         }
     ).listen(port, domain);
 
