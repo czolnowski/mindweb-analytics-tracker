@@ -1,5 +1,5 @@
 var http = require('http'),
-    promise = require('q'),
+    promise = require('./promise'),
     Visit = require('./entities/Visit'),
     Action = require('./entities/Action'),
     Visitor = require('./entities/Visitor'),
