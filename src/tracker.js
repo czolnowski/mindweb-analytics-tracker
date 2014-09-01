@@ -1,6 +1,5 @@
 var http = require('http'),
     promise = require('q'),
-    moment = require('moment'),
     Visit = require('./entities/Visit'),
     Action = require('./entities/Action'),
     Visitor = require('./entities/Visitor'),
