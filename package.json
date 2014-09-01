@@ -1,6 +1,6 @@
 {
     "name": "mindweb-analytics-tracker",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "description": "Tracker for mindweb analytics tool.",
     "author": "Marcin Czołnowski <marcin@mindweb.pl>",
     "keywords": ["analytics", "mindweb", "tracker"],

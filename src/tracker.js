@@ -1,5 +1,6 @@
 var http = require('http'),
     promise = require('q'),
+    moment = require('moment'),
     Visit = require('./entities/Visit'),
     Action = require('./entities/Action'),
     Visitor = require('./entities/Visitor'),
@@ -112,7 +113,7 @@ module.exports.run = function (domain, port)
                 visit = new Visit(visitor),
                 action = new Action(visit);
 
-            logger.success('New connection. [%d]', startTime, 'debug');
+            logger.success('New connection. [%s]', startTime, 'debug');
             deferrals.connection.resolve(request, response);
 
             logger.info('Recognize visitor.', 'debug');
