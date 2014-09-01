@@ -1,4 +1,5 @@
 var http = require('http'),
+    parse = require('url').parse,
     promise = require('./promise'),
     Visit = require('./entities/Visit'),
     Action = require('./entities/Action'),
@@ -112,6 +113,8 @@ module.exports.run = function (domain, port)
                     visitor = new Visitor(),
                     visit = new Visit(visitor),
                     action = new Action(visit);
+
+                request.query = parse(request.url, true).query;
 
                 logger.success('New connection. [%s]', startTime, 'debug');
                 deferrals.connection.resolve(
