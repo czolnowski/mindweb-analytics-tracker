@@ -15,7 +15,6 @@
         "url": "https://github.com/czolnowski/mindweb-analytics"
     },
     "dependencies": {
-        "mindweb-logger": "1.0.0",
         "q": "1.0.1"
     },
     "devDependencies": {},

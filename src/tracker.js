@@ -1,24 +1,80 @@
-var logger = require('mindweb-logger'),
-    http = require('http'),
-    modules = [],
+var http = require('http'),
     promise = require('q'),
-    dataStore;
+    Visit = require('./entities/Visit'),
+    Action = require('./entities/Action'),
+    Visitor = require('./entities/Visitor'),
+
+    modules = [],
+    dataStore,
+    logger,
+    deferrals = {
+        connection: promise.defer(),
+        recognizeVisitor: promise.defer(),
+        isKnownVisitor: promise.defer(),
+        newVisit: promise.defer(),
+        knownVisit: promise.defer(),
+        registerAction: promise.defer(),
+        end: promise.defer()
+    },
+    deferralsKeys = Object.keys(deferrals);
+
+var registerDeferralsForAllModules = function ()
+{
+    modules.forEach(
+        function (module)
+        {
+            logger.info('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ', 'debug');
+            logger.info('Register %s module.', module.name, 'debug');
+
+            deferralsKeys.forEach(
+                function (key)
+                {
+                    var methodName = 'on' + key.charAt(0).toUpperCase() + key.slice(1),
+                        deferred = deferrals[key];
+
+                    if (typeof module.module[methodName] === 'function') {
+                        logger.info('Register for %s callback %s.', module.name, key, 'debug');
+
+                        module.module[methodName](deferred.promise);
+                    }
+                }
+            );
+        }
+    );
+};
+
+module.exports.setLogger = function (_logger)
+{
+    logger = _logger;
+};
+
+module.exports.setDataStore = function (_dataStore)
+{
+    dataStore = _dataStore;
+};
 
 module.exports.init = function ()
 {
-    logger.success('Tracker initialized');
+    logger.info('Initialize tracker.', 'debug');
 
-    for (var moduleIndex = 0; moduleIndex < modules.length; ++moduleIndex) {
-        if (modules.hasOwnProperty(moduleIndex)) {
-            var module = modules[moduleIndex];
+    modules.forEach(
+        function (module)
+        {
+            if (typeof module.module.setDataStore === 'function') {
+                module.module.setDataStore(dataStore);
+            }
+
+            if (typeof module.module.setLogger === 'function') {
+                module.module.setLogger(logger);
+            }
 
             if (typeof module.module.init === 'function') {
-                logger.log('Initialize %s module.', module.name);
-
                 module.module.init();
             }
         }
-    }
+    );
+
+    logger.success('Tracker initialized.\n', 'info');
 };
 
 module.exports.register = function (name, module)
@@ -30,94 +86,103 @@ module.exports.register = function (name, module)
         }
     );
 
-    logger.success('Module %s registered', name);
-};
-
-module.exports.setDataStore = function (_dataStore)
-{
-    dataStore = _dataStore;
+    logger.info('Module %s registered', name, 'debug');
 };
 
 module.exports.run = function (domain, port)
 {
-    var deferreds = {
-            connection: promise.defer(),
-            recognizeVisitor: promise.defer(),
-            isKnownVisitor: promise.defer(),
-            newVisit: promise.defer(),
-            knownVisit: promise.defer(),
-            registerAction: promise.defer(),
-            end: promise.defer()
-        },
-        deferredsKeys = Object.keys(deferreds);
-
     port = port || 8080;
     domain = domain || 'localhost';
 
-    logger.success('Start register deferreds. Modules number: %d.', modules.length);
+    logger.info('Start register deferrals. Modules number: %d.', modules.length, 'info');
 
-    for (var moduleIndex = 0; moduleIndex < modules.length; ++moduleIndex) {
-        if (modules.hasOwnProperty(moduleIndex)) {
-            var module = modules[moduleIndex];
+    registerDeferralsForAllModules();
 
-            logger.log('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ');
-            logger.log('Register %s module.', module.name);
-
-            deferredsKeys.forEach(
-                function (key)
-                {
-                    var methodName = 'on' + key.charAt(0).toUpperCase() + key.slice(1);
-
-                    if (typeof module.module[methodName] === 'function') {
-                        logger.log('Register for %s callback %s.', module.name, key);
-
-                        module.module[methodName](deferreds[key].promise);
-                    }
-                }
-            );
-        }
-    }
-
-    logger.success('Start server.');
+    logger.success('Start HTTP server.', 'info');
 
     http.createServer(
         function (request, response)
         {
-            var startTime = new Date().getTime(),
+            var startTime = new Date(),
                 endTime,
-                visitor = null,
-                isKnownVisitor = false;
-            logger.success('New connection. [%d]', startTime);
-            deferreds.connection.resolve(request, response);
+                persistStartTime,
+                persistEndTime,
 
-            deferreds.recognizeVisitor.resolve(visitor, dataStore, request, response);
-            logger.success('Recognize visitor.');
+                visitor = new Visitor(),
+                visit = new Visit(visitor),
+                action = new Action(visit);
 
-            deferreds.isKnownVisitor.resolve(
-                isKnownVisitor,
-                visitor,
-                dataStore,
-                request,
-                response
+            logger.success('New connection. [%d]', startTime, 'debug');
+            deferrals.connection.resolve(request, response);
+
+            logger.info('Recognize visitor.', 'debug');
+            deferrals.recognizeVisitor.resolve(
+                {
+                    visitor: visitor,
+                    request: request,
+                    response: response
+                }
             );
 
-            if (!isKnownVisitor) {
-                deferreds.newVisit.resolve(visitor, request, response);
+            deferrals.isKnownVisitor.resolve(
+                {
+                    visitor: visitor,
+                    request: request,
+                    response: response
+                }
+            );
 
-                logger.success('New visit.');
+            if (!visitor.isKnown()) {
+                deferrals.newVisit.resolve(
+                    {
+                        visit: visit,
+                        visitor: visitor,
+                        request: request,
+                        response: response
+                    }
+                );
+
+                logger.info('New visit. [%s]', visit.getId(), 'debug');
             } else {
-                deferreds.knownVisit.resolve(visitor, request, response);
+                deferrals.knownVisit.resolve(
+                    {
+                        visit: visit,
+                        visitor: visitor,
+                        request: request,
+                        response: response
+                    }
+                );
 
-                logger.success('Visit known.');
+                logger.info('Visit known. [%s]', visit.getId(), 'debug');
             }
 
-            deferreds.registerAction.resolve(visitor, request, response);
-            logger.success('Register action.');
+            deferrals.registerAction.resolve(
+                {
+                    action: action,
+                    request: request,
+                    response: response
+                }
+            );
+            logger.info('Action registered. [%s]', action.getId(), 'debug');
 
-            endTime = new Date().getTime();
+            endTime = new Date();
 
-            logger.success('Action end. [%d]', endTime);
-            logger.success('Request handled in %d ms seconds.', endTime - startTime);
+            logger.success('Request handled in %d ms.', endTime.getTime() - startTime.getTime(), 'debug');
+
+            logger.info('Persist to data store.', 'debug');
+
+            persistStartTime = new Date();
+            dataStore.persist(visit, action);
+            persistEndTime = new Date();
+
+            logger.success('Persisted in %d ms.', persistEndTime.getTime() - persistStartTime.getTime(), 'debug');
+
+            deferrals.end.resolve(
+                {
+                    request: request,
+                    response: response
+                }
+            );
         }
     ).listen(port, domain);
 
