@@ -10,7 +10,7 @@ Promise.prototype.then = function then(success, error)
     }
 
     if (typeof error === 'function') {
-        this.deferred.errors.push(success);
+        this.deferred.errors.push(error);
     }
 };
 
