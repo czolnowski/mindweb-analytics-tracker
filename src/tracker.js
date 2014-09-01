@@ -113,7 +113,12 @@ module.exports.run = function (domain, port)
                 action = new Action(visit);
 
             logger.success('New connection. [%s]', startTime, 'debug');
-            deferrals.connection.resolve(request, response);
+            deferrals.connection.resolve(
+                {
+                    request: request,
+                    response: response
+                }
+            );
 
             logger.info('Recognize visitor.', 'debug');
             deferrals.recognizeVisitor.resolve(
